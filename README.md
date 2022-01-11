@@ -1,6 +1,9 @@
 # DailyActivitiesOrganizer
 Hopefully a system to help me get daily activities done
 Python command line interface
+
+Below is handled in the Wiki part of github from now on
+
 Ideas:
 one block is an activity i.e. reading, training, learning, clean the desk 5 min and so on
 randomly showing the blocks?

@@ -5,6 +5,8 @@ begin argparse part
 check man page info
 
 # to do
-check where github stores files locally
 test argparse
 start wiki info?
+
+# working on
+check where github stores files locally (asked at the pybites slack git channel)

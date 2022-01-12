@@ -9,3 +9,4 @@ parser.add_argument('all', help='Show all activities for today')
 parser.print_help()                    
 
 print("testing")
+print("new line")

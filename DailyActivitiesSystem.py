@@ -27,11 +27,13 @@ if args.list:
 	print("List selected")
 #	for act,time in activities.items():
 	for act in activities_list:
-		# if time[1]<time[0]:
-		#print(act)
+	# if time[1]<time[0]:
+	#print(act)
 	#	print(act.items())
-		for key, value in act.items():
-				print(key + ": " + str(value))
+		if act["Time_done"] < act["Time_planned"]:
+			print(act["Event"], act["Time_done"])
+#		for key, value in act.items():
+#				print(key + ": " + str(value))
 #		print(act)
 #			print(act, time[0]-time[1], "minutes left")
 if args.today:

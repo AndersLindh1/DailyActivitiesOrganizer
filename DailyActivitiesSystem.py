@@ -30,7 +30,7 @@ if args.list:
 	# if time[1]<time[0]:
 	#print(act)
 	#	print(act.items())
-		if act["Time_done"] < act["Time_planned"]:
+		if act["Time_done"] < act["Time_planned"]: #only activities with time left
 			print(act["Event"], act["Time_done"])
 #		for key, value in act.items():
 #				print(key + ": " + str(value))

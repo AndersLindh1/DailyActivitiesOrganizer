@@ -58,7 +58,7 @@ parser = argparse.ArgumentParser(description='Support system to execute daily ac
 parser.add_argument("-l", "--list", action='store_true', help='List remaining activities for today')
 parser.add_argument('-t', '--today', action='store_true', help='Show all activities for today')
 #parser.add_argument('a', help="hej")
-parser.add_argument('-a', '--add', help="Add activity for today in order", nargs=2, metavar=("activity","order"))
+parser.add_argument('-a', '--add', help="Add activity for today in order", nargs=3, metavar=("activity","order","time_planned"))
 parser.add_argument('-d', '--done', help="Mark activity as done for today", metavar="activity")
 parser.add_argument('-x', '--time', help="Mark activity with time spent", nargs=2, metavar=("activity", "time"))
 parser.add_argument('-c', '--check', action='store_true', help="Check activities list regarding unique order")
@@ -81,7 +81,7 @@ if args.today:
 	print("Show todays activities, regardless their status")
 	# print(activities_list)
 	for act in activities_list:
-		print(act["Event"], "\t", act["Time_planned"], "minutes planned", "\t", act["Time_done"], "minutes done today")
+		print(act["Event"], ": [", act["Time_planned"], "minutes planned]", act["Time_done"], "minutes done today")
 if args.check:
 	print("Check if blockfile is OK regarding order")
 	print(check_block(activities_list))
@@ -89,6 +89,7 @@ if args.add:
 	print("add ")
 	print(args.add[0])
 	print(args.add[1])
+	print(args.add[2])
 if args.done:
 	print("done", args.done)
 	if args.done in activities: # Need to find a way to check case insensitive

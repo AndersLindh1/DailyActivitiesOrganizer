@@ -10,7 +10,7 @@ def getActivities(file=None):
 		activities_list=[{"ID": 0, "Event": "Mindfulness", "Time_planned": 10, "Time_done": 10, "Order": 1, "Periodicity": 1, "Weekdays": 0, "Day_counter": 0}, {"ID": 1, "Event": "Read", "Time_planned":15, "Time_done": 0, "Order": 0, "Periodicity": 2, "Weekdays": 0, "Day_counter": 0},{"ID": 2, "Event": "Eat fruit", "Time_planned": 5, "Time_done": 0, "Order": 0, "Periodicity": 1, "Weekdays": 0, "Day_counter": 0}, {"ID": 3, "Event": "Python", "Time_planned": 20, "Time_done": 0, "Order": 2, "Periodicity": 2, "Weekdays": 0, "Day_counter": 0}]
 #		activities={"Mindfulness": [10,11], "Read": [15, 7], "Pybites": [15, 0], "workout": [10, 0]}
 	else:
-		print("file provided")
+		print("file", file, "provided")
 	return activities_list
 
 def sort(activities_list):
@@ -55,6 +55,7 @@ activities_list = getActivities()	#at start of script, if new day reset Time_don
 sort(activities_list)	#at start of day or if requested with -
 print(activities_list)
 parser = argparse.ArgumentParser(description='Support system to execute daily activities')
+#parser.add_argument("-f", "--file", action='store_true', help='Load file contaning activities') #Lägg till nargs?, metavar? is it useful?
 parser.add_argument("-l", "--list", action='store_true', help='List remaining activities for today')
 parser.add_argument('-t', '--today', action='store_true', help='Show all activities for today')
 #parser.add_argument('a', help="hej")
@@ -64,6 +65,9 @@ parser.add_argument('-x', '--time', help="Mark activity with time spent", nargs=
 parser.add_argument('-c', '--check', action='store_true', help="Check activities list regarding unique order")
 parser.print_help()  # debug                  
 args = parser.parse_args()
+#if args.file:		#will I use this one?
+	#fileName = args.file
+	#print(fileName)
 if args.list:
 	print("Show remaining activities for today")
 #	for act,time in activities.items():
@@ -86,10 +90,13 @@ if args.check:
 	print("Check if blockfile is OK regarding order")
 	print(check_block(activities_list))
 if args.add:
+	new_act={'ID': 0, 'Event': args.add[0], 'Time_planned': args.add[1], 'Time_done': 0, 'Order': args.add[2], 'Periodicity': 1, 'Weekdays': 0, 'Day_counter': 0}
 	print("add ")
-	print(args.add[0])
-	print(args.add[1])
-	print(args.add[2])
+	print(new_act)
+	activities_list.append(new_act)
+	with open('today.txt', 'w') as file:
+		file.write(str(activities_list))
+
 if args.done:
 	print("done", args.done)
 	if args.done in activities: # Need to find a way to check case insensitive

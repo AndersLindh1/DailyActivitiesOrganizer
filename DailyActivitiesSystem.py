@@ -3,6 +3,7 @@
 
 import argparse
 import random
+import datetime
 
 def getActivities(file=None):
 	if file == None:
@@ -116,6 +117,8 @@ if args.time:
 		activities[args.time[0]][1]=activities[args.time[0]][1] + int(args.time[1])
 
 #print(activities_list)
+timestamp=datetime.datetime.now()
+print(timestamp.strftime("%Y-%m-%d %H:%M:%S"))
 
 #print("testing")
 #print("new line")

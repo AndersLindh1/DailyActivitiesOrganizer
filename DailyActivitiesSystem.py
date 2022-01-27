@@ -4,6 +4,7 @@
 import argparse
 import random
 import datetime
+import os.path
 
 def getActivities(file=None):
 	if file == None:
@@ -15,9 +16,9 @@ def getActivities(file=None):
 	return activities_list
 
 def sort(activities_list):
-	print("sort begin")	#debug
+	#print("sort begin")	#debug
 	if check_block(activities_list) == True: #check if every "Order" is unique except for 0, which is a flag for random order
-		print("Sorting")
+		#print("Sorting")
 		activities_list.sort(key=lambda item: item.get("Order")) 
 		ID = 1
 		for item in activities_list:
@@ -26,12 +27,12 @@ def sort(activities_list):
 				ID += 1
 		start = ID	#get start value for random activities (next value after the fixed ones)
 		stop = len(activities_list)+1 #get stop value
-		print("start", start, "stop", stop)
+		#print("start", start, "stop", stop)
 		#print(random.randrange(start, stop))
-		print(list(range(start,stop)))	
-		print(random.choice(range(start, stop)))
+		#print(list(range(start,stop)))	
+		#print(random.choice(range(start, stop)))
 		random_activities=list(range(start, stop))	#create list of possible random ID:s 
-		print(random_activities, random.choice(random_activities))
+		#print(random_activities, random.choice(random_activities))
 		for item in activities_list:	#go through activities again, but check for those marked with random this time
 			if item["Order"] == 0:
 				random_ID = random.choice(random_activities) #pick one of the remaining places for the activity
@@ -51,6 +52,28 @@ def check_block(activities_list):
 			res_list.append(current)
 	return True
 	
+
+#def getYear(time):
+#	return int(time[0:4])
+
+#def getMonth(time):
+#	return int(time[5:7])
+
+#def getDay(time):
+#	return int(time[8:10])
+
+#def getHour(time):
+#	return int(time[11:13])
+
+#def getMinute(time):
+#	return int(time[14:16])
+
+#def getSecond(time):
+#	return int(time[17:19])
+
+def getTime():
+	timestamp=datetime.datetime.now()	#get current date and time for log entry
+	return timestamp.strftime("%Y-%m-%d %H:%M:%S")
 
 activities_list = getActivities()	#at start of script, if new day reset Time_done and increase Day_counter
 sort(activities_list)	#at start of day or if requested with -
@@ -116,10 +139,48 @@ if args.time:
 		print(activities[args.time[0]])
 		activities[args.time[0]][1]=activities[args.time[0]][1] + int(args.time[1])
 
-#print(activities_list)
-timestamp=datetime.datetime.now()
-print(timestamp.strftime("%Y-%m-%d %H:%M:%S"))
+if (os.path.exists('log.txt')):
+	print("log.txt exists, all well")
+else:
+	print("log.txt does not exist, create and populate")
+	with open('log.txt', 'w') as file:
+		file.write(getTime())
+with open('log.txt', 'r') as file:	#get date of last log entry
+	last_time = file.readlines()[-1]
+	print(last_time.rstrip())
+last_timestamp = datetime.datetime.strptime(last_time.rstrip(), "%Y-%m-%d %H:%M:%S")
 
+#print(activities_list)
+timestamp=datetime.datetime.now()	#get current date and time for log entry
+current_time = timestamp.strftime("%Y-%m-%d %H:%M:%S")
+print(current_time)
+with open('log.txt', 'a') as file:   #only when checking days passed
+	file.write("No argument passed\n")
+	file.write(current_time+"\n")
+
+#last_record_year = getYear(last_time)
+#print(last_record_year, "last record year")
+
+#last_record_month = getMonth(last_time)
+#print(last_record_month, "last record month")
+
+#last_record_day = getDay(last_time)
+#print(last_record_day, "last record day")
+
+#last_record_hour = getHour(last_time)
+#print(last_record_hour, "last record hour")
+
+#last_record_minute = getMinute(last_time)
+#print(last_record_minute, "last record minute")
+
+#last_record_second = getSecond(last_time)
+#print(last_record_second, "last record second")
+
+diff = timestamp - last_timestamp
+if (diff.days == 0):
+	print("Still the same day!")
+else:
+	print(diff.days, "days since last log entry")
 #print("testing")
 #print("new line")
 

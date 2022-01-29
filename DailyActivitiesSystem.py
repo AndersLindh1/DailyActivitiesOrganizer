@@ -1,3 +1,4 @@
+#! /usr/bin/env python3
 # Anders Lindh
 # 2022-01-11
 
@@ -72,8 +73,15 @@ def check_block(activities_list):
 #	return int(time[17:19])
 
 def getTime():
-	timestamp=datetime.datetime.now()	#get current date and time for log entry
-	return timestamp.strftime("%Y-%m-%d %H:%M:%S")
+	#timestamp=datetime.datetime.now()	#get current date and time for log entry
+	return datetime.datetime.now()	#get current date and time for log entry
+#	return timestamp.strftime("%Y-%m-%d %H:%M:%S")
+
+def convTimeToStr(time):
+	return time.strftime("%Y-%m-%d %H:%M:%S")
+
+def convTimeToObj(time):
+	return datetime.datetime.strptime(time, "%Y-%m-%d %H:%M:%S")
 
 activities_list = getActivities()	#at start of script, if new day reset Time_done and increase Day_counter
 sort(activities_list)	#at start of day or if requested with -
@@ -144,15 +152,15 @@ if (os.path.exists('log.txt')):
 else:
 	print("log.txt does not exist, create and populate")
 	with open('log.txt', 'w') as file:
-		file.write(getTime())
+		file.write(convTimeToStr(getTime()))
 with open('log.txt', 'r') as file:	#get date of last log entry
 	last_time = file.readlines()[-1]
 	print(last_time.rstrip())
-last_timestamp = datetime.datetime.strptime(last_time.rstrip(), "%Y-%m-%d %H:%M:%S")
+last_timestamp = convTimeToObj(last_time.rstrip())
 
 #print(activities_list)
-timestamp=datetime.datetime.now()	#get current date and time for log entry
-current_time = timestamp.strftime("%Y-%m-%d %H:%M:%S")
+timestamp=getTime()	#get current date and time for log entry
+current_time = convTimeToStr(timestamp)
 print(current_time)
 with open('log.txt', 'a') as file:   #only when checking days passed
 	file.write("No argument passed\n")

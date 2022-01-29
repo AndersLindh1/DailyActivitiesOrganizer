@@ -6,20 +6,104 @@ import argparse
 import random
 import datetime
 import os.path
+import json
+#check sort : when it needs to be done and how to invoke with argument
 
-def getActivities(file=None):
-	if file == None:
-		print("no filename provided, use default")
+def checkLogExists():
+	if not (os.path.exists('log.txt')):
+		time = convTimeToStr(getTime()) + "\n"
+		writeToLog(time)
+
+def getLastTimestamp():
+	with open('log.txt', 'r') as file:	#get date of last log entry
+		last_time = file.readlines()[-1]
+#		print(last_time.rstrip())
+	return convTimeToObj(last_time.rstrip())
+
+def checkNewDay():
+	checkLogExists()
+	last_timestamp = getLastTimestamp()  
+	last_date = last_timestamp.date()
+
+	timestamp=getTime()	#get current date and time for log entry
+	current_time = convTimeToStr(timestamp)
+	date_today = timestamp.date()
+
+	diff = date_today - last_date
+	if (diff.days > 0):
+		print(diff.days, "days since last log entry")
+	return diff.days
+
+
+def addActivity(activity, time, order):
+	for act in activities_list:
+		if act["Event"].lower() == activity.lower():
+			print("Activity " + activity + " already exists in list")
+			return	
+	new_act={'ID': 0, 'Event': activity, 'Time_planned': int(time), 'Time_done': 0, 'Order': int(order), 'Periodicity': 1, 'Weekdays': 0, 'Day_counter': 0}
+	print("add " + activity)
+	activities_list.append(new_act)
+	text = activity + " added to todays list\n" + convTimeToStr(getTime()) + "\n"
+	writeToLog(text)
+	writeToJSON(activities_list, "today.json")
+	check_block(activities_list)
+	return
+
+def writeToLog(text):
+	with open('log.txt', 'a') as file:
+		file.write(text)
+	return 
+
+def writeToJSON(text, file_name):
+	with open(file_name, 'w') as file:
+		file.write(json.dumps(text,indent=4))
+	return
+	
+def checkBlockExists():
+	if not os.path.exists("block.json"):	
 		activities_list=[{"ID": 0, "Event": "Mindfulness", "Time_planned": 10, "Time_done": 10, "Order": 1, "Periodicity": 1, "Weekdays": 0, "Day_counter": 0}, {"ID": 1, "Event": "Read", "Time_planned":15, "Time_done": 0, "Order": 0, "Periodicity": 2, "Weekdays": 0, "Day_counter": 0},{"ID": 2, "Event": "Eat fruit", "Time_planned": 5, "Time_done": 0, "Order": 0, "Periodicity": 1, "Weekdays": 0, "Day_counter": 0}, {"ID": 3, "Event": "Python", "Time_planned": 20, "Time_done": 0, "Order": 2, "Periodicity": 2, "Weekdays": 0, "Day_counter": 0}]
-#		activities={"Mindfulness": [10,11], "Read": [15, 7], "Pybites": [15, 0], "workout": [10, 0]}
-	else:
-		print("file", file, "provided")
+		writeToJSON(activities_list, "block.json")
+
+def checkTodayExists():
+	if not os.path.exists("today.json"):	
+		with open("block.json", 'r') as file:
+			activities_list = json.loads(file.read())	
+		writeToJSON(activities_list, "today.json")
+
+def getActivities(days):
+	checkBlockExists()
+	checkTodayExists()
+	with open("today.json", 'r') as file:
+		activities_list = json.loads(file.read())
+			#print(activities_list)
+	for act in activities_list:
+		act["Time_planned"] = int(act["Time_planned"])
+		act["Time_done"] = int(act["Time_done"])
+		act["Order"] = int(act["Order"])
+		act["Periodicity"] = int(act["Periodicity"])
+		act["Day_counter"] = int(act["Day_counter"])+days
+	
+	act_list2=[]
+	if days > 0:
+		text = "New day\n" + convTimeToStr(getTime()) + "\n"
+		writeToLog(text)
+		for act in activities_list:
+			if act["Weekdays"] == 0:
+				if act["Day_counter"] >= act["Periodicity"]:
+					act["Time_done"] = 0
+					act["Day_counter"] = 0
+					act_list2.append(act)
+			else:
+				weekday = getTime().isoweekday()
+				if weekday in act["Weekdays"]:
+					act["Time_done"] = 0
+					act_list2.append(act)
+		writeToJSON(activities_list, 'block.json')
+		return act_list2
 	return activities_list
 
 def sort(activities_list):
-	#print("sort begin")	#debug
 	if check_block(activities_list) == True: #check if every "Order" is unique except for 0, which is a flag for random order
-		#print("Sorting")
 		activities_list.sort(key=lambda item: item.get("Order")) 
 		ID = 1
 		for item in activities_list:
@@ -49,33 +133,27 @@ def check_block(activities_list):
 		current = act["Order"]
 		if current > 0:
 			if current in res_list:	#the value of "Order" exists for another entry
-				return False, act["Event"]	#exit the check, send the value of the second "Event" with the same "Order"
+				fix_order = input("Order not unique, fix (Y/n)? ") or "Y"
+				if fix_order.upper() == "Y":
+					fixOrder()
+					check_block(activities_list)
+				else:
+					return False, act["Event"]	#exit the check, send the value of the second "Event" with the same "Order"
 			res_list.append(current)
+	writeToJSON(activities_list, 'today.json')
 	return True
 	
-
-#def getYear(time):
-#	return int(time[0:4])
-
-#def getMonth(time):
-#	return int(time[5:7])
-
-#def getDay(time):
-#	return int(time[8:10])
-
-#def getHour(time):
-#	return int(time[11:13])
-
-#def getMinute(time):
-#	return int(time[14:16])
-
-#def getSecond(time):
-#	return int(time[17:19])
+def fixOrder():
+	for act in activities_list:
+		print(act["Event"], "Order", act["Order"])
+	for act in activities_list:
+		order=input(act["Event"] + " desired order (" + str(act["Order"]) + ")") or act["Order"]
+		act["Order"] = int(order)
+	#if not check_block(activities_list):
+		#exit(1) #still not ordered, exit program
 
 def getTime():
-	#timestamp=datetime.datetime.now()	#get current date and time for log entry
 	return datetime.datetime.now()	#get current date and time for log entry
-#	return timestamp.strftime("%Y-%m-%d %H:%M:%S")
 
 def convTimeToStr(time):
 	return time.strftime("%Y-%m-%d %H:%M:%S")
@@ -83,113 +161,100 @@ def convTimeToStr(time):
 def convTimeToObj(time):
 	return datetime.datetime.strptime(time, "%Y-%m-%d %H:%M:%S")
 
-activities_list = getActivities()	#at start of script, if new day reset Time_done and increase Day_counter
+def printOrder():
+	order = 0
+	for act in activities_list:
+		print(act["Event"], "order", act["Order"])
+		if act["Order"] > 0:
+			order += 1
+	return order+1
+
+days = checkNewDay()
+if days != 0:
+	os.remove('today.json')
+activities_list = getActivities(days)	#at start of script, if new day reset Time_done and increase Day_counter
 sort(activities_list)	#at start of day or if requested with -
-print(activities_list)
+#print(activities_list)
 parser = argparse.ArgumentParser(description='Support system to execute daily activities')
 #parser.add_argument("-f", "--file", action='store_true', help='Load file contaning activities') #Lägg till nargs?, metavar? is it useful?
 parser.add_argument("-l", "--list", action='store_true', help='List remaining activities for today')
-parser.add_argument('-t', '--today', action='store_true', help='Show all activities for today')
-#parser.add_argument('a', help="hej")
+parser.add_argument('-t', '--today', action='store_true', help='Show all activities for json')
 parser.add_argument('-a', '--add', help="Add activity for today in order", nargs=3, metavar=("activity","order","time_planned"))
 parser.add_argument('-d', '--done', help="Mark activity as done for today", metavar="activity")
 parser.add_argument('-x', '--time', help="Mark activity with time spent", nargs=2, metavar=("activity", "time"))
 parser.add_argument('-c', '--check', action='store_true', help="Check activities list regarding unique order")
-parser.print_help()  # debug                  
+#parser.print_help()  # debug                  
 args = parser.parse_args()
 #if args.file:		#will I use this one?
 	#fileName = args.file
 	#print(fileName)
 if args.list:
 	print("Show remaining activities for today")
-#	for act,time in activities.items():
 	for act in activities_list:
-	# if time[1]<time[0]:
-	#print(act)
-	#	print(act.items())
 		if act["Time_done"] < act["Time_planned"]: #only activities with time left
-			print(act["Event"], act["Time_done"])
-#		for key, value in act.items():
-#				print(key + ": " + str(value))
-#		print(act)
-#			print(act, time[0]-time[1], "minutes left")
+			print(act["Event"], act["Time_planned"] - act["Time_done"], "minutes left")
 if args.today:
 	print("Show todays activities, regardless their status")
-	# print(activities_list)
 	for act in activities_list:
-		print(act["Event"], ": [", act["Time_planned"], "minutes planned]", act["Time_done"], "minutes done today")
+		print(act["Event"] + ": [" + str(act["Time_planned"]) + " minutes planned] " + str(act["Time_done"]) + " minutes done today")
 if args.check:
 	print("Check if blockfile is OK regarding order")
 	print(check_block(activities_list))
 if args.add:
-	new_act={'ID': 0, 'Event': args.add[0], 'Time_planned': args.add[1], 'Time_done': 0, 'Order': args.add[2], 'Periodicity': 1, 'Weekdays': 0, 'Day_counter': 0}
-	print("add ")
-	print(new_act)
-	activities_list.append(new_act)
-	with open('today.txt', 'w') as file:
-		file.write(str(activities_list))
+	addActivity(args.add[0],args.add[1],args.add[2])
 
-if args.done:
-	print("done", args.done)
-	if args.done in activities: # Need to find a way to check case insensitive
-		print("Activity exists")
-		print(activities[args.done])
-		time_planned=activities[args.done][0]
-		print(time_planned)
-		activities[args.done][1]=time_planned
-		print(activities) # debug, chech change is register
+if args.done: 
+	for act	in activities_list:
+		if act["Event"].lower() == args.done.lower():
+			print("done", args.done)
+			act["Time_done"] = act["Time_planned"]
+			text_to_logfile = act["Event"] + " done at \n" + convTimeToStr(getTime()) + "\n"
+			writeToLog(text_to_logfile)
+			writeToJSON(activities_list, "today.json")
 
-	else:
-		print("Activity does not exist in todays planning")
-if args.time:
-	print(args.time[1], "minutes spent on", args.time[0])
-	if args.time[0] in activities:
-		print(activities[args.time[0]])
-		activities[args.time[0]][1]=activities[args.time[0]][1] + int(args.time[1])
+if args.time:	
+	found = False
+	for act in activities_list:
+		if act["Event"].lower() == args.time[0].lower():
+			found = True
+			print(args.time[1], "minutes spent on", args.time[0])
+			act["Time_done"] = int(args.time[1]) + int(act["Time_done"])
+			text_to_logfile = args.time[1] + " minutes spent on " + act["Event"] + " at \n" + convTimeToStr(getTime()) + "\n"
+			writeToLog(text_to_logfile)
+			writeToJSON(activities_list, "today.json")
+	if found == False:
+		add_answer = input("Activitity " + args.time[0] + " was not found. Add it for today (Y/n)?") or "Y"
+		if add_answer.upper() == "Y":
+			time_add = input("How many minutes planned? (5) ") or 5
+			max_order = printOrder()
+			order_add = input("Which order? ("+str(max_order)+") ") or max_order
+			print(time_add, order_add)
+			addActivity(args.time[0], time_add, order_add)
+			
+		#input
 
-if (os.path.exists('log.txt')):
-	print("log.txt exists, all well")
-else:
-	print("log.txt does not exist, create and populate")
-	with open('log.txt', 'w') as file:
-		file.write(convTimeToStr(getTime()))
-with open('log.txt', 'r') as file:	#get date of last log entry
-	last_time = file.readlines()[-1]
-	print(last_time.rstrip())
-last_timestamp = convTimeToObj(last_time.rstrip())
+#checkNewDay()
 
-#print(activities_list)
-timestamp=getTime()	#get current date and time for log entry
-current_time = convTimeToStr(timestamp)
-print(current_time)
-with open('log.txt', 'a') as file:   #only when checking days passed
-	file.write("No argument passed\n")
-	file.write(current_time+"\n")
+#with open('log.txt', 'r') as file:	#get date of last log entry
+#	last_time = file.readlines()[-1]
+#	print(last_time.rstrip())
+#last_timestamp = convTimeToObj(last_time.rstrip())
 
-#last_record_year = getYear(last_time)
-#print(last_record_year, "last record year")
+##print(activities_list)
+#timestamp=getTime()	#get current date and time for log entry
+#current_time = convTimeToStr(timestamp)
+#print(current_time)
+#with open('log.txt', 'a') as file:   #only when checking days passed
+#	file.write("No argument passed\n")
+#	file.write(current_time+"\n")
 
-#last_record_month = getMonth(last_time)
-#print(last_record_month, "last record month")
 
-#last_record_day = getDay(last_time)
-#print(last_record_day, "last record day")
-
-#last_record_hour = getHour(last_time)
-#print(last_record_hour, "last record hour")
-
-#last_record_minute = getMinute(last_time)
-#print(last_record_minute, "last record minute")
-
-#last_record_second = getSecond(last_time)
-#print(last_record_second, "last record second")
-
-diff = timestamp - last_timestamp
-if (diff.days == 0):
-	print("Still the same day!")
-else:
-	print(diff.days, "days since last log entry")
-#print("testing")
-#print("new line")
+#diff = timestamp - last_timestamp
+#if (diff.days == 0):
+#	print("Still the same day!")
+#else:
+#	print(diff.days, "days since last log entry")
+##print("testing")
+##print("new line")
 
 

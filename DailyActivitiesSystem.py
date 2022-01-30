@@ -46,7 +46,7 @@ def addActivity(activity, time, order):
 	text = activity + " added to todays list\n" + convTimeToStr(getTime()) + "\n"
 	writeToLog(text)
 	writeToJSON(activities_list, "today.json")
-	check_block(activities_list)
+	checkOrder(activities_list)
 	return
 
 def writeToLog(text):
@@ -68,6 +68,11 @@ def checkTodayExists():
 	if not os.path.exists("today.json"):	
 		with open("block.json", 'r') as file:
 			activities_list = json.loads(file.read())	
+		result_weekdays = checkWeekdays(activities_list)
+		print(result_weekdays)
+		if result_weekdays == False:
+			exit(1)	#weekdays wrong, fix
+### put checkOrder and checkWeekday here? 
 		writeToJSON(activities_list, "today.json")
 
 def getActivities(days):
@@ -103,7 +108,7 @@ def getActivities(days):
 	return activities_list
 
 def sort(activities_list):
-	if check_block(activities_list) == True: #check if every "Order" is unique except for 0, which is a flag for random order
+	if checkOrder(activities_list) == True: #check if every "Order" is unique except for 0, which is a flag for random order
 		activities_list.sort(key=lambda item: item.get("Order")) 
 		ID = 1
 		for item in activities_list:
@@ -127,7 +132,7 @@ def sort(activities_list):
 
 		return activities_list
 
-def check_block(activities_list):
+def checkOrder(activities_list):
 	res_list = []	#temporary list, will hold values of "Order" which are fixed (not random which have "Order" == 0)
 	for act in activities_list:
 		current = act["Order"]
@@ -136,7 +141,7 @@ def check_block(activities_list):
 				fix_order = input("Order not unique, fix (Y/n)? ") or "Y"
 				if fix_order.upper() == "Y":
 					fixOrder()
-					check_block(activities_list)
+					checkOrder(activities_list)
 				else:
 					return False, act["Event"]	#exit the check, send the value of the second "Event" with the same "Order"
 			res_list.append(current)
@@ -149,8 +154,24 @@ def fixOrder():
 	for act in activities_list:
 		order=input(act["Event"] + " desired order (" + str(act["Order"]) + ")") or act["Order"]
 		act["Order"] = int(order)
-	#if not check_block(activities_list):
+	#if not checkOrder(activities_list):
 		#exit(1) #still not ordered, exit program
+
+def checkWeekdays(activities_list):
+	OK = True
+	for act in activities_list:
+		print(act["Event"])
+		if act["Weekdays"] == 0:
+			print("Weekdays 0")
+			return True
+		if type(act["Weekdays"]) == list:
+			print(act["Weekdays"])
+			if max(act["Weekdays"]) > 7 or min(act["Weekdays"]) < 1:
+				return False
+		elif act["Weekdays"] != 0:
+			print("Weekdays 0")
+			return False
+	return True				
 
 def getTime():
 	return datetime.datetime.now()	#get current date and time for log entry
@@ -178,11 +199,11 @@ sort(activities_list)	#at start of day or if requested with -
 parser = argparse.ArgumentParser(description='Support system to execute daily activities')
 #parser.add_argument("-f", "--file", action='store_true', help='Load file contaning activities') #Lägg till nargs?, metavar? is it useful?
 parser.add_argument("-l", "--list", action='store_true', help='List remaining activities for today')
-parser.add_argument('-t', '--today', action='store_true', help='Show all activities for json')
+parser.add_argument('-t', '--today', action='store_true', help='Show all activities for today')
 parser.add_argument('-a', '--add', help="Add activity for today in order", nargs=3, metavar=("activity","order","time_planned"))
 parser.add_argument('-d', '--done', help="Mark activity as done for today", metavar="activity")
 parser.add_argument('-x', '--time', help="Mark activity with time spent", nargs=2, metavar=("activity", "time"))
-parser.add_argument('-c', '--check', action='store_true', help="Check activities list regarding unique order")
+parser.add_argument('-c', '--change', action='store_true', help="Change order for todays activities")
 #parser.print_help()  # debug                  
 args = parser.parse_args()
 #if args.file:		#will I use this one?
@@ -197,9 +218,14 @@ if args.today:
 	print("Show todays activities, regardless their status")
 	for act in activities_list:
 		print(act["Event"] + ": [" + str(act["Time_planned"]) + " minutes planned] " + str(act["Time_done"]) + " minutes done today")
-if args.check:
-	print("Check if blockfile is OK regarding order")
-	print(check_block(activities_list))
+
+if args.change:
+	print("Change order for todays activities")
+	fixOrder()
+	checkOrder(activities_list)
+#if args.check: # remove arg, run at startup instead. Check both blockfile and today and activities_list. Check order and weekdays
+	#print("Check if blockfile is OK regarding order")
+	#print(checkOrder(activities_list))
 if args.add:
 	addActivity(args.add[0],args.add[1],args.add[2])
 

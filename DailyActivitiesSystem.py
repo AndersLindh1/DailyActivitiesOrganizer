@@ -70,8 +70,11 @@ def checkTodayExists():
 			activities_list = json.loads(file.read())	
 		result_weekdays = checkWeekdays(activities_list)
 		print(result_weekdays)
-		if result_weekdays == False:
-			exit(1)	#weekdays wrong, fix
+		if result_weekdays != True:
+			print("Error in weekdays")
+			print(result_weekdays["Weekdays"])
+			#exit(1)	#weekdays wrong, fix
+			fixWeekdays(result_weekdays) 	# recursively run until OK?
 ### put checkOrder and checkWeekday here? 
 		writeToJSON(activities_list, "today.json")
 
@@ -157,8 +160,29 @@ def fixOrder():
 	#if not checkOrder(activities_list):
 		#exit(1) #still not ordered, exit program
 
+def fixWeekdays(act):
+	if type(act["Weekdays"]) == int:
+		scheduled = " not "
+	elif type(act["Weekdays"]) == list:
+		scheduled = " "
+	else:
+		scheduled = " possibly "
+	print(act["Event"] + " currently" + scheduled + "set to run on specific weekdays, but with some error")
+	result = input("Do you want it to be scheduled for fixed weekdays (Y/n)? ") or "Y"
+	if result == "Y":
+		day_counter = 1
+		res_weekday = []
+		for day in ["monday", "tuesday", "wednesday", "thursdag", "friday", "saturday", "sunday"]:
+			res = input("Do you want " + act["Event"] + " scheduled for " + day + " (Y/n)? ") or "Y"
+			if res == "Y":
+				res_weekday.append(day_counter)
+			day_counter += 1
+		act["Weekdays"] = res_weekday
+	else:
+		act["Weekdays"] = 0
+	return True
+	
 def checkWeekdays(activities_list):
-	OK = True
 	for act in activities_list:
 		print(act["Event"])
 		if act["Weekdays"] == 0:
@@ -167,10 +191,10 @@ def checkWeekdays(activities_list):
 		if type(act["Weekdays"]) == list:
 			print(act["Weekdays"])
 			if max(act["Weekdays"]) > 7 or min(act["Weekdays"]) < 1:
-				return False
+				return act
 		elif act["Weekdays"] != 0:
-			print("Weekdays 0")
-			return False
+			print("Weekdays not 0")
+			return act
 	return True				
 
 def getTime():

@@ -69,12 +69,13 @@ def checkTodayExists():
 		with open("block.json", 'r') as file:
 			activities_list = json.loads(file.read())	
 		result_weekdays = checkWeekdays(activities_list)
-		print(result_weekdays)
-		if result_weekdays != True:
+		while result_weekdays != True:
 			print("Error in weekdays")
 			print(result_weekdays["Weekdays"])
 			#exit(1)	#weekdays wrong, fix
-			fixWeekdays(result_weekdays) 	# recursively run until OK?
+			fixWeekdays(result_weekdays) 	
+			result_weekdays = checkWeekdays(activities_list)
+		writeToJSON(activities_list, "block.json")
 ### put checkOrder and checkWeekday here? 
 		writeToJSON(activities_list, "today.json")
 
@@ -103,6 +104,7 @@ def getActivities(days):
 					act_list2.append(act)
 			else:
 				weekday = getTime().isoweekday()
+				print("weekday", weekday, "act[\"Event\"]", act["Event"], "act[\"Weekdays\"]", act["Weekdays"])	#debug
 				if weekday in act["Weekdays"]:
 					act["Time_done"] = 0
 					act_list2.append(act)
@@ -182,7 +184,7 @@ def fixWeekdays(act):
 		act["Weekdays"] = 0
 	return True
 	
-def checkWeekdays(activities_list):
+def checkWeekdays(activities_list):	# problem with add multiple days, problem if weekdays == 1? 
 	for act in activities_list:
 		print(act["Event"])
 		if act["Weekdays"] == 0:

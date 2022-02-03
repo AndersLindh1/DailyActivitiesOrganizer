@@ -35,7 +35,7 @@ def checkNewDay():
 	return diff.days
 
 
-def addActivity(activity, time, order):
+def addActivity(activity, order, time):
 	for act in activities_list:
 		if act["Event"].lower() == activity.lower():
 			print("Activity " + activity + " already exists in list")

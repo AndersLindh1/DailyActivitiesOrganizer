@@ -171,32 +171,31 @@ def fixWeekdays(act):
 		scheduled = " possibly "
 	print(act["Event"] + " currently" + scheduled + "set to run on specific weekdays, but with some error")
 	result = input("Do you want it to be scheduled for fixed weekdays (Y/n)? ") or "Y"
-	if result == "Y":
+	if result.upper() == "Y":
 		day_counter = 1
 		res_weekday = []
 		for day in ["monday", "tuesday", "wednesday", "thursdag", "friday", "saturday", "sunday"]:
 			res = input("Do you want " + act["Event"] + " scheduled for " + day + " (Y/n)? ") or "Y"
-			if res == "Y":
+			if res.upper() == "Y":
 				res_weekday.append(day_counter)
 			day_counter += 1
 		act["Weekdays"] = res_weekday
 	else:
 		act["Weekdays"] = 0
+	print("Corrected value: " + str(act["Weekdays"]))
 	return True
 	
 def checkWeekdays(activities_list):	# problem with add multiple days, problem if weekdays == 1? 
 	for act in activities_list:
 		print(act["Event"])
-		if act["Weekdays"] == 0:
-			print("Weekdays 0")
-			return True
+		if type(act["Weekdays"]) == int:
+			print("Weekdays not 0")
+			if act["Weekdays"] != 0:
+				return act
 		if type(act["Weekdays"]) == list:
 			print(act["Weekdays"])
 			if max(act["Weekdays"]) > 7 or min(act["Weekdays"]) < 1:
 				return act
-		elif act["Weekdays"] != 0:
-			print("Weekdays not 0")
-			return act
 	return True				
 
 def getTime():
@@ -218,7 +217,8 @@ def printOrder():
 
 days = checkNewDay()
 if days != 0:
-	os.remove('today.json')
+	if os.path.exists('today.json'):
+		os.remove('today.json')
 activities_list = getActivities(days)	#at start of script, if new day reset Time_done and increase Day_counter
 sort(activities_list)	#at start of day or if requested with -
 #print(activities_list)

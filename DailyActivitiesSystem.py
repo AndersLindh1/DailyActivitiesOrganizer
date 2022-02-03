@@ -182,20 +182,38 @@ def fixWeekdays(act):
 		act["Weekdays"] = res_weekday
 	else:
 		act["Weekdays"] = 0
+		checkPeriodicity(act)
 	print("Corrected value: " + str(act["Weekdays"]))
 	return True
 	
-def checkWeekdays(activities_list):	# problem with add multiple days, problem if weekdays == 1? 
+def checkPeriodicity(act):
+	if type(act["Periodicity"]) == int:
+		if act["Periodicity"] < 1:
+			fixPeriodicity(act)
+			checkPeriodicity(act)
+	else: 
+		fixPeriodicity(act)
+		checkPeriodicity(act)
+	return True
+
+def fixPeriodicity(act):
+	res_per = input("How often do you want to run " + act["Event"] + " (1) day? ") or 1
+	act["Periodicity"] = int(res_per)
+	return True
+
+def checkWeekdays(activities_list):	
 	for act in activities_list:
-		print(act["Event"])
+		#print(act["Event"])
 		if type(act["Weekdays"]) == int:
-			print("Weekdays not 0")
+			#print("Weekdays = int")
 			if act["Weekdays"] != 0:
 				return act
-		if type(act["Weekdays"]) == list:
-			print(act["Weekdays"])
+		elif type(act["Weekdays"]) == list:
+			#print(act["Weekdays"])
 			if max(act["Weekdays"]) > 7 or min(act["Weekdays"]) < 1:
 				return act
+		else:
+			return act
 	return True				
 
 def getTime():

@@ -76,7 +76,6 @@ def checkTodayExists():
 			fixWeekdays(result_weekdays) 	
 			result_weekdays = checkWeekdays(activities_list)
 		writeToJSON(activities_list, "block.json")
-### put checkOrder and checkWeekday here? 
 		writeToJSON(activities_list, "today.json")
 
 def getActivities(days):
@@ -248,11 +247,12 @@ parser.add_argument('-a', '--add', help="Add activity for today in order", nargs
 parser.add_argument('-d', '--done', help="Mark activity as done for today", metavar="activity")
 parser.add_argument('-x', '--time', help="Mark activity with time spent", nargs=2, metavar=("activity", "time"))
 parser.add_argument('-c', '--change', action='store_true', help="Change order for todays activities")
+parser.add_argument('-s', '--shuffle', action='store_true', help='Shuffle the unordered activities for today')
 #parser.print_help()  # debug                  
 args = parser.parse_args()
-#if args.file:		#will I use this one?
-	#fileName = args.file
-	#print(fileName)
+if args.shuffle:
+	print("Rerun shuffle for the unordered activities")
+	sort(activities_list)
 if args.list:
 	print("Show remaining activities for today")
 	for act in activities_list:

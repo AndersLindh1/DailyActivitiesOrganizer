@@ -7,7 +7,26 @@ import random
 import datetime
 import os.path
 import json
-#check sort : when it needs to be done and how to invoke with argument
+
+def getEmailProperties():
+	checkEmailFileExists()
+	with open("email.json", 'r') as file:
+		email = json.loads(file.read())	
+		print(email)
+
+def checkEmailFileExists():
+	if not (os.path.exists('email.json')):
+		createEmailFile()
+	return True
+
+def createEmailFile():
+	emailAddress = input("Enter your emailAddress: ")
+	smtp = input("Enter the SMTP address: ")
+#add more fields that are needed
+	email = {"emailAddress": emailAddress, "SMTP": smtp}
+	writeToJSON(email, 'email.json')
+#maybe check if fields are correct, how?
+	return True
 
 def checkLogExists():
 	if not (os.path.exists('log.txt')):
@@ -248,8 +267,12 @@ parser.add_argument('-d', '--done', help="Mark activity as done for today", meta
 parser.add_argument('-x', '--time', help="Mark activity with time spent", nargs=2, metavar=("activity", "time"))
 parser.add_argument('-c', '--change', action='store_true', help="Change order for todays activities")
 parser.add_argument('-s', '--shuffle', action='store_true', help='Shuffle the unordered activities for today')
+parser.add_argument('-e', '--email', action='store_true', help='Load and Check email properties')
 #parser.print_help()  # debug                  
 args = parser.parse_args()
+if args.email:
+	print("Load email properties")
+	getEmailProperties()
 if args.shuffle:
 	print("Rerun shuffle for the unordered activities")
 	sort(activities_list)

@@ -7,12 +7,26 @@ import random
 import datetime
 import os.path
 import json
+import getpass
+import smtplib
+import ssl
+
+def getActTimeLeft():
+	res = ""
+	for act in activities_list:
+		if act["Time_done"] < act["Time_planned"]: #only activities with time left
+			res = res + act["Event"] + " " + str(act["Time_planned"] - act["Time_done"]) + " minutes left\n"
+	return res
 
 def getEmailProperties():
 	checkEmailFileExists()
 	with open("email.json", 'r') as file:
 		email = json.loads(file.read())	
-		print(email)
+	emailAddrS = email["emailAddressSender"]
+	smtp = email["SMTP"]
+	passw = email["pass"]
+	emailAddrR = email["emailAddressReceiver"]
+	return emailAddrS, smtp, passw, emailAddrR
 
 def checkEmailFileExists():
 	if not (os.path.exists('email.json')):
@@ -20,10 +34,12 @@ def checkEmailFileExists():
 	return True
 
 def createEmailFile():
-	emailAddress = input("Enter your emailAddress: ")
+	emailAddressSender = input("Enter the sender email address: ")
 	smtp = input("Enter the SMTP address: ")
+	passw = getpass.getpass(prompt="Type the password for sender accout: ")
+	emailAddressReceiver = input("Enter the receiver email address: ")
 #add more fields that are needed
-	email = {"emailAddress": emailAddress, "SMTP": smtp}
+	email = {"emailAddressSender": emailAddressSender, "SMTP": smtp, "passw": passw, "emailAddressReceiver": emailAddressReceiver}
 	writeToJSON(email, 'email.json')
 #maybe check if fields are correct, how?
 	return True
@@ -272,15 +288,27 @@ parser.add_argument('-e', '--email', action='store_true', help='Load and Check e
 args = parser.parse_args()
 if args.email:
 	print("Load email properties")
-	getEmailProperties()
+	emailS, smtp, passw, emailR = getEmailProperties()
+	actLeft = getActTimeLeft()
+	if len(actLeft) > 0:
+		message = "Subject: Activities with time left today\n\n" + convTimeToStr(getTime()) + "\n" + getActTimeLeft()
+	else:
+		
+		message = "Subject: All Activities done!\n\n" + convTimeToStr(getTime()) + "\n" + "Well done! Keep up the good work!"
+	port = 465
+	context = ssl.create_default_context()
+	with smtplib.SMTP_SSL(smtp, port, context=context) as server:
+		server.login(emailS, passw)
+		server.sendmail(emailS, emailR, message)
 if args.shuffle:
 	print("Rerun shuffle for the unordered activities")
 	sort(activities_list)
 if args.list:
 	print("Show remaining activities for today")
-	for act in activities_list:
-		if act["Time_done"] < act["Time_planned"]: #only activities with time left
-			print(act["Event"], act["Time_planned"] - act["Time_done"], "minutes left")
+	print(getActTimeLeft())
+#	for act in activities_list:
+#		if act["Time_done"] < act["Time_planned"]: #only activities with time left
+#			print(act["Event"], act["Time_planned"] - act["Time_done"], "minutes left")
 if args.today:
 	print("Show todays activities, regardless their status")
 	for act in activities_list:

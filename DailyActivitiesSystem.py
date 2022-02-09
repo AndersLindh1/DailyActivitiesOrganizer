@@ -11,6 +11,13 @@ import getpass
 import smtplib
 import ssl
 
+def getMinutesOrder():
+	time_add = input("How many minutes planned? (5) ") or 5
+	max_order = printOrder()
+	order_add = input("Which order? ("+str(max_order)+") ") or max_order
+#	print(time_add, order_add)
+	return time_add, order_add
+
 def getActTimeLeft():
 	res = ""
 	for act in activities_list:
@@ -138,7 +145,7 @@ def getActivities(days):
 					act_list2.append(act)
 			else:
 				weekday = getTime().isoweekday()
-				print("weekday", weekday, "act[\"Event\"]", act["Event"], "act[\"Weekdays\"]", act["Weekdays"])	#debug
+				#print("weekday", weekday, "act[\"Event\"]", act["Event"], "act[\"Weekdays\"]", act["Weekdays"])	#debug
 				if weekday in act["Weekdays"]:
 					act["Time_done"] = 0
 					act_list2.append(act)
@@ -284,8 +291,56 @@ parser.add_argument('-x', '--time', help="Mark activity with time spent", nargs=
 parser.add_argument('-c', '--change', action='store_true', help="Change order for todays activities")
 parser.add_argument('-s', '--shuffle', action='store_true', help='Shuffle the unordered activities for today')
 parser.add_argument('-e', '--email', action='store_true', help='Load and Check email properties')
+parser.add_argument('-b', '--block', action='store_true', help='Edit block file (the recurring activities)')
+
 #parser.print_help()  # debug                  
 args = parser.parse_args()
+if args.block:
+	menu = 1
+	while menu != 0:
+		#clear screen?
+		print("Edit the blocks of recurring activities")
+		print("1 Add new activity")
+		print("2 Remove activity")
+		print("3 Change order/weekdays")
+		print("4 Change periodicity")
+		print("5 Change time planned")
+		print("0 quit")
+		menu = int(input("Select 1-5 "))
+#		if menu == 0:
+#			exit(0)
+		if menu == 1:
+#			exit(0)
+			print("Add new activity")
+			new_act = input("Enter name for new activity: ")
+			time_add, order_add = getMinutesOrder()
+			addActivity(new_act, order_add, time_add) 
+			writeToJSON(activities_list, "block.json")
+		if menu == 2:
+			remove = False
+			print("Remove activity")
+			for act in activities_list:
+				res = input("Remove " + act["Event"] + "? (y/N) ") or "N"
+				if res.lower() == "y":
+					activities_list.remove(act)
+					print(activities_list)
+					remove = True
+			if remove == True:
+				writeToJSON(activities_list, "block.json")
+				writeToJSON(activities_list, "today.json")
+
+			#exit(0)
+		if menu == 3:
+			print("Add new activity")
+			#exit(0)
+		if menu == 4:
+			print("Add new activity")
+			#exit(0)
+		if menu == 5:
+			print("Add new activity")
+			#exit(0)
+	print("quit")
+	exit(0)
 if args.email:
 	print("Load email properties")
 	emailS, smtp, passw, emailR = getEmailProperties()
@@ -295,8 +350,10 @@ if args.email:
 	else:
 		
 		message = "Subject: All Activities done!\n\n" + convTimeToStr(getTime()) + "\n" + "Well done! Keep up the good work!"
+	# read more about sending emails at https://realpython.com/python-send-email/
 	port = 465
 	context = ssl.create_default_context()
+	print("Send email to " + emailR)
 	with smtplib.SMTP_SSL(smtp, port, context=context) as server:
 		server.login(emailS, passw)
 		server.sendmail(emailS, emailR, message)
@@ -346,11 +403,12 @@ if args.time:
 	if found == False:
 		add_answer = input("Activitity " + args.time[0] + " was not found. Add it for today (Y/n)?") or "Y"
 		if add_answer.upper() == "Y":
-			time_add = input("How many minutes planned? (5) ") or 5
-			max_order = printOrder()
-			order_add = input("Which order? ("+str(max_order)+") ") or max_order
-			print(time_add, order_add)
-			addActivity(args.time[0], time_add, order_add)
+			time_add, order_add = getMinutesOrder()
+#			time_add = input("How many minutes planned? (5) ") or 5
+#			max_order = printOrder()
+#			order_add = input("Which order? ("+str(max_order)+") ") or max_order
+#			print(time_add, order_add)
+			addActivity(args.time[0], order_add, time_add)
 			
 		#input
 

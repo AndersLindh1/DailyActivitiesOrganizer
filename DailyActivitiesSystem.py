@@ -115,15 +115,15 @@ def checkTodayExists():
 			print("Error in weekdays")
 			print(result_weekdays["Weekdays"])
 			#exit(1)	#weekdays wrong, fix
-			fixWeekdays(result_weekdays) 	
+			fixWeekdays(result_weekdays, True) 	
 			result_weekdays = checkWeekdays(activities_list)
 		writeToJSON(activities_list, "block.json")
 		writeToJSON(activities_list, "today.json")
 
-def getActivities(days):
+def getActivities(days,file_name):
 	checkBlockExists()
 	checkTodayExists()
-	with open("today.json", 'r') as file:
+	with open(file_name, 'r') as file:
 		activities_list = json.loads(file.read())
 			#print(activities_list)
 	for act in activities_list:
@@ -198,19 +198,20 @@ def fixOrder():
 	for act in activities_list:
 		print(act["Event"], "Order", act["Order"])
 	for act in activities_list:
-		order=input(act["Event"] + " desired order (" + str(act["Order"]) + ")") or act["Order"]
+		order=input(act["Event"] + " desired order (" + str(act["Order"]) + ") ") or act["Order"]
 		act["Order"] = int(order)
 	#if not checkOrder(activities_list):
 		#exit(1) #still not ordered, exit program
 
-def fixWeekdays(act):
-	if type(act["Weekdays"]) == int:
-		scheduled = " not "
-	elif type(act["Weekdays"]) == list:
-		scheduled = " "
-	else:
-		scheduled = " possibly "
-	print(act["Event"] + " currently" + scheduled + "set to run on specific weekdays, but with some error")
+def fixWeekdays(act, error_mode):
+	if error_mode:
+		if type(act["Weekdays"]) == int:
+			scheduled = " not "
+		elif type(act["Weekdays"]) == list:
+			scheduled = " "
+		else:
+			scheduled = " possibly "
+		print(act["Event"] + " currently" + scheduled + "set to run on specific weekdays, but with some error")
 	result = input("Do you want it to be scheduled for fixed weekdays (Y/n)? ") or "Y"
 	if result.upper() == "Y":
 		day_counter = 1
@@ -223,8 +224,10 @@ def fixWeekdays(act):
 		act["Weekdays"] = res_weekday
 	else:
 		act["Weekdays"] = 0
+		if not error_mode:
+			fixPeriodicity(act)
 		checkPeriodicity(act)
-	print("Corrected value: " + str(act["Weekdays"]))
+	#print("Corrected value: " + str(act["Weekdays"]))
 	return True
 	
 def checkPeriodicity(act):
@@ -238,7 +241,11 @@ def checkPeriodicity(act):
 	return True
 
 def fixPeriodicity(act):
-	res_per = input("How often do you want to run " + act["Event"] + " (1) day? ") or 1
+	if act["Periodicity"] > 0:
+		per = act["Periodicity"]
+	else:
+		per = 1
+	res_per = input("How often do you want to run " + act["Event"] + " (" + str(per) + ") day? ") or per
 	act["Periodicity"] = int(res_per)
 	return True
 
@@ -278,11 +285,9 @@ days = checkNewDay()
 if days != 0:
 	if os.path.exists('today.json'):
 		os.remove('today.json')
-activities_list = getActivities(days)	#at start of script, if new day reset Time_done and increase Day_counter
+activities_list = getActivities(days,"today.json")	#at start of script, if new day reset Time_done and increase Day_counter
 sort(activities_list)	#at start of day or if requested with -
-#print(activities_list)
 parser = argparse.ArgumentParser(description='Support system to execute daily activities')
-#parser.add_argument("-f", "--file", action='store_true', help='Load file contaning activities') #Lägg till nargs?, metavar? is it useful?
 parser.add_argument("-l", "--list", action='store_true', help='List remaining activities for today')
 parser.add_argument('-t', '--today', action='store_true', help='Show all activities for today')
 parser.add_argument('-a', '--add', help="Add activity for today in order", nargs=3, metavar=("activity","order","time_planned"))
@@ -296,21 +301,20 @@ parser.add_argument('-b', '--block', action='store_true', help='Edit block file 
 #parser.print_help()  # debug                  
 args = parser.parse_args()
 if args.block:
+	checkBlockExists()
+	activities_list = getActivities(0,"block.json")
 	menu = 1
 	while menu != 0:
 		#clear screen?
 		print("Edit the blocks of recurring activities")
 		print("1 Add new activity")
 		print("2 Remove activity")
-		print("3 Change order/weekdays")
-		print("4 Change periodicity")
+		print("3 Change order")
+		print("4 Change periodicity/weekdays")
 		print("5 Change time planned")
 		print("0 quit")
 		menu = int(input("Select 1-5 "))
-#		if menu == 0:
-#			exit(0)
 		if menu == 1:
-#			exit(0)
 			print("Add new activity")
 			new_act = input("Enter name for new activity: ")
 			time_add, order_add = getMinutesOrder()
@@ -327,18 +331,25 @@ if args.block:
 					remove = True
 			if remove == True:
 				writeToJSON(activities_list, "block.json")
-				writeToJSON(activities_list, "today.json")
 
-			#exit(0)
 		if menu == 3:
-			print("Add new activity")
-			#exit(0)
+			print("Change order")
+			fixOrder()
+			writeToJSON(activities_list, "block.json")
 		if menu == 4:
-			print("Add new activity")
-			#exit(0)
+			print("change periodicity or weekday")
+			for act in activities_list:
+				text = "Change " + act["Event"] + " with current settings: "
+				if act["Weekdays"] == 0:
+					text = text + "periodicity " + str(act["Periodicity"])
+				else:
+					text = text + "weekdays " + str(act["Weekdays"])
+				res = input(text + " (y/N) ") or "N"
+				if res.upper() == "Y":
+					fixWeekdays(act, False)		
+			writeToJSON(activities_list, "block.json")
 		if menu == 5:
 			print("Add new activity")
-			#exit(0)
 	print("quit")
 	exit(0)
 if args.email:

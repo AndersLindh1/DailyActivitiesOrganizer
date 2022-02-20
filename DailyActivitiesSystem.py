@@ -11,6 +11,31 @@ import getpass
 import smtplib
 import ssl
 
+path = os.getcwd()
+
+def checkPath(file_path):
+	check_path = os.path.dirname(file_path)
+	if not (os.path.exists(check_path)):
+		os.mkdir(check_path)
+		print("create path", check_path)
+	
+def sendMail(user_input):
+	print("Load email properties")
+	emailS, smtp, passw, emailR = getEmailProperties(user_input)
+	actLeft = getActTimeLeft()
+	if len(actLeft) > 0:
+		message = "Subject: Activities with time left today\n\n" + convTimeToStr(getTime()) + "\n" + getActTimeLeft()
+	else:
+		
+		message = "Subject: All Activities done!\n\n" + convTimeToStr(getTime()) + "\n" + "Well done! Keep up the good work!"
+	# read more about sending emails at https://realpython.com/python-send-email/
+	port = 465
+	context = ssl.create_default_context()
+	print("Send email to " + emailR)
+	with smtplib.SMTP_SSL(smtp, port, context=context) as server:
+		server.login(emailS, passw)
+		server.sendmail(emailS, emailR, message)
+
 def getMinutesOrder():
 	time_add = input("How many minutes planned? (5) ") or 5
 	max_order = printOrder()
@@ -25,9 +50,13 @@ def getActTimeLeft():
 			res = res + act["Event"] + " " + str(act["Time_planned"] - act["Time_done"]) + " minutes left\n"
 	return res
 
-def getEmailProperties():
-	checkEmailFileExists()
-	with open("email.json", 'r') as file:
+def getEmailProperties(user_input):
+	print("debug getEmailProperties(" + str(user_input) + ")")
+	checkEmailFileExists(user_input)
+	file_path = os.path.join(os.path.expanduser('~/.config/DailyActivitiesSystem'),"email.json")
+	print("path to email.json: " + file_path)
+	#with open("email.json", 'r') as file:
+	with open(file_path, 'r') as file:
 		email = json.loads(file.read())	
 	emailAddrS = email["emailAddressSender"]
 	smtp = email["SMTP"]
@@ -35,29 +64,45 @@ def getEmailProperties():
 	emailAddrR = email["emailAddressReceiver"]
 	return emailAddrS, smtp, passw, emailAddrR
 
-def checkEmailFileExists():
-	if not (os.path.exists('email.json')):
-		createEmailFile()
+def checkEmailFileExists(user_input):
+	print("debug checkEmailFileExists(" + str(user_input) + ")")
+	file_path = os.path.join(os.path.expanduser('~/.config/DailyActivitiesSystem'),"email.json")
+	#file_path = os.path.join(os.getcwd(),"email.json")
+	print("file_path: " + file_path) # path when crontab runs the script is home... not Python/... find solution!
+	if not (os.path.exists(file_path)):
+		createEmailFile(user_input)
 	return True
 
-def createEmailFile():
-	emailAddressSender = input("Enter the sender email address: ")
-	smtp = input("Enter the SMTP address: ")
-	passw = getpass.getpass(prompt="Type the password for sender accout: ")
-	emailAddressReceiver = input("Enter the receiver email address: ")
+def createEmailFile(user_input):
+	if user_input:
+		emailAddressSender = input("Enter the sender email address: ")
+		smtp = input("Enter the SMTP address: ")
+		passw = getpass.getpass(prompt="Type the password for sender accout: ")
+		emailAddressReceiver = input("Enter the receiver email address: ")
 #add more fields that are needed
-	email = {"emailAddressSender": emailAddressSender, "SMTP": smtp, "passw": passw, "emailAddressReceiver": emailAddressReceiver}
-	writeToJSON(email, 'email.json')
+		email = {"emailAddressSender": emailAddressSender, "SMTP": smtp, "pass": passw, "emailAddressReceiver": emailAddressReceiver}
+		#file_path = os.path.join(os.path.expanduser('~/.config/DailyActivitiesSystem'),"email.json")
+	#	file_path = os.path.join(os.getcwd(),"email.json")
+		#check_path = os.path.dirname(file_path)
+		#if not (os.path.exists(check_path)):
+		#	os.mkdir(check_path)
+		#	print("create path", check_path)
+		writeToJSON(email, "email.json")
 #maybe check if fields are correct, how?
-	return True
+		return True
+	else:
+		print("createEmailFile with userinput = false => exit 1")
+		exit(1) # can't enter user input when run from crontab
 
 def checkLogExists():
-	if not (os.path.exists('log.txt')):
+	file_path = os.path.join(os.path.expanduser('~/.config/DailyActivitiesSystem'),"log.txt")
+	if not (os.path.exists(file_path)):
 		time = convTimeToStr(getTime()) + "\n"
 		writeToLog(time)
 
 def getLastTimestamp():
-	with open('log.txt', 'r') as file:	#get date of last log entry
+	file_path = os.path.join(os.path.expanduser('~/.config/DailyActivitiesSystem'),"log.txt")
+	with open(file_path, 'r') as file:	#get date of last log entry   
 		last_time = file.readlines()[-1]
 #		print(last_time.rstrip())
 	return convTimeToObj(last_time.rstrip())
@@ -87,28 +132,40 @@ def addActivity(activity, order, time):
 	activities_list.append(new_act)
 	text = activity + " added to todays list\n" + convTimeToStr(getTime()) + "\n"
 	writeToLog(text)
-	writeToJSON(activities_list, "today.json")
+	writeToJSON(activities_list, "today.json") 
 	checkOrder(activities_list)
 	return
 
 def writeToLog(text):
-	with open('log.txt', 'a') as file:
+	file_path = os.path.join(os.path.expanduser('~/.config/DailyActivitiesSystem'),"log.txt")
+	with open(file_path, 'a') as file: 
 		file.write(text)
 	return 
 
 def writeToJSON(text, file_name):
-	with open(file_name, 'w') as file:
+	file_path = os.path.join(os.path.expanduser('~/.config/DailyActivitiesSystem'),file_name)
+	checkPath(file_path)
+	with open(file_path, 'w') as file:
 		file.write(json.dumps(text,indent=4))
 	return
 	
 def checkBlockExists():
-	if not os.path.exists("block.json"):	
+	
+	file_path = os.path.join(os.path.expanduser('~/.config/DailyActivitiesSystem'),"block.json")
+	if not os.path.exists(file_path):	
 		activities_list=[{"ID": 0, "Event": "Mindfulness", "Time_planned": 10, "Time_done": 10, "Order": 1, "Periodicity": 1, "Weekdays": 0, "Day_counter": 0}, {"ID": 1, "Event": "Read", "Time_planned":15, "Time_done": 0, "Order": 0, "Periodicity": 2, "Weekdays": 0, "Day_counter": 0},{"ID": 2, "Event": "Eat fruit", "Time_planned": 5, "Time_done": 0, "Order": 0, "Periodicity": 1, "Weekdays": 0, "Day_counter": 0}, {"ID": 3, "Event": "Python", "Time_planned": 20, "Time_done": 0, "Order": 2, "Periodicity": 2, "Weekdays": 0, "Day_counter": 0}]
+		#file_path = os.path.join(os.path.expanduser('~/.config/DailyActivitiesSystem'),"block.json")
+		#check_path = os.path.expanduser('~/.config/DailyActivitiesSystem')
+		#if not (os.path.exists(check_path)):
+		##	os.mkdir(check_path)
+		#	print("create path", check_path)
 		writeToJSON(activities_list, "block.json")
 
 def checkTodayExists():
-	if not os.path.exists("today.json"):	
-		with open("block.json", 'r') as file:
+	file_path = os.path.join(os.path.expanduser('~/.config/DailyActivitiesSystem'),"today.json")
+	if not os.path.exists(file_path):	
+		file_path = os.path.join(os.path.expanduser('~/.config/DailyActivitiesSystem'),"block.json")
+		with open(file_path, 'r') as file:   
 			activities_list = json.loads(file.read())	
 		result_weekdays = checkWeekdays(activities_list)
 		while result_weekdays != True:
@@ -117,13 +174,14 @@ def checkTodayExists():
 			#exit(1)	#weekdays wrong, fix
 			fixWeekdays(result_weekdays, True) 	
 			result_weekdays = checkWeekdays(activities_list)
-		writeToJSON(activities_list, "block.json")
-		writeToJSON(activities_list, "today.json")
+		writeToJSON(activities_list, "block.json")   
+		writeToJSON(activities_list, "today.json")   
 
 def getActivities(days,file_name):
 	checkBlockExists()
 	checkTodayExists()
-	with open(file_name, 'r') as file:
+	file_path = os.path.join(os.path.expanduser('~/.config/DailyActivitiesSystem'),file_name)
+	with open(file_path, 'r') as file:
 		activities_list = json.loads(file.read())
 			#print(activities_list)
 	for act in activities_list:
@@ -149,7 +207,7 @@ def getActivities(days,file_name):
 				if weekday in act["Weekdays"]:
 					act["Time_done"] = 0
 					act_list2.append(act)
-		writeToJSON(activities_list, 'block.json')
+		writeToJSON(activities_list, 'block.json') 
 		return act_list2
 	return activities_list
 
@@ -191,7 +249,7 @@ def checkOrder(activities_list):
 				else:
 					return False, act["Event"]	#exit the check, send the value of the second "Event" with the same "Order"
 			res_list.append(current)
-	writeToJSON(activities_list, 'today.json')
+	writeToJSON(activities_list, 'today.json') 
 	return True
 	
 def fixOrder():
@@ -297,6 +355,7 @@ parser.add_argument('-c', '--change', action='store_true', help="Change order fo
 parser.add_argument('-s', '--shuffle', action='store_true', help='Shuffle the unordered activities for today')
 parser.add_argument('-e', '--email', action='store_true', help='Load and Check email properties')
 parser.add_argument('-b', '--block', action='store_true', help='Edit block file (the recurring activities)')
+parser.add_argument('-r', '--crontab', action='store_true', help='Send email with help of crontab (no user input possible)')
 
 #parser.print_help()  # debug                  
 args = parser.parse_args()
@@ -319,7 +378,7 @@ if args.block:
 			new_act = input("Enter name for new activity: ")
 			time_add, order_add = getMinutesOrder()
 			addActivity(new_act, order_add, time_add) 
-			writeToJSON(activities_list, "block.json")
+			writeToJSON(activities_list, "block.json") 
 		if menu == 2:
 			remove = False
 			print("Remove activity")
@@ -330,12 +389,12 @@ if args.block:
 					print(activities_list)
 					remove = True
 			if remove == True:
-				writeToJSON(activities_list, "block.json")
+				writeToJSON(activities_list, "block.json") 
 
 		if menu == 3:
 			print("Change order")
 			fixOrder()
-			writeToJSON(activities_list, "block.json")
+			writeToJSON(activities_list, "block.json") 
 		if menu == 4:
 			print("change periodicity or weekday")
 			for act in activities_list:
@@ -347,27 +406,35 @@ if args.block:
 				res = input(text + " (y/N) ") or "N"
 				if res.upper() == "Y":
 					fixWeekdays(act, False)		
-			writeToJSON(activities_list, "block.json")
+			writeToJSON(activities_list, "block.json") 
 		if menu == 5:
-			print("Add new activity")
+			print("change planned time")
+			for act in activities_list:
+				res = input("Enter new planned time for " + act["Event"] + " or press enter to keep current time (" + str(act["Time_planned"]) + ")") or act["Time_planned"]
+				act["Time_planned"] = int(res)
+			writeToJSON(activities_list, "block.json") 
 	print("quit")
 	exit(0)
+if args.crontab:
+	sendMail(False)
+
 if args.email:
-	print("Load email properties")
-	emailS, smtp, passw, emailR = getEmailProperties()
-	actLeft = getActTimeLeft()
-	if len(actLeft) > 0:
-		message = "Subject: Activities with time left today\n\n" + convTimeToStr(getTime()) + "\n" + getActTimeLeft()
-	else:
-		
-		message = "Subject: All Activities done!\n\n" + convTimeToStr(getTime()) + "\n" + "Well done! Keep up the good work!"
-	# read more about sending emails at https://realpython.com/python-send-email/
-	port = 465
-	context = ssl.create_default_context()
-	print("Send email to " + emailR)
-	with smtplib.SMTP_SSL(smtp, port, context=context) as server:
-		server.login(emailS, passw)
-		server.sendmail(emailS, emailR, message)
+	sendMail(True)
+	#print("Load email properties")
+	#emailS, smtp, passw, emailR = getEmailProperties()
+	#actLeft = getActTimeLeft()
+	#if len(actLeft) > 0:
+		#message = "Subject: Activities with time left today\n\n" + convTimeToStr(getTime()) + "\n" + getActTimeLeft()
+	#else:
+		#
+		#message = "Subject: All Activities done!\n\n" + convTimeToStr(getTime()) + "\n" + "Well done! Keep up the good work!"
+	## read more about sending emails at https://realpython.com/python-send-email/
+	#port = 465
+	#context = ssl.create_default_context()
+	#print("Send email to " + emailR)
+	#with smtplib.SMTP_SSL(smtp, port, context=context) as server:
+		#server.login(emailS, passw)
+		#server.sendmail(emailS, emailR, message)
 if args.shuffle:
 	print("Rerun shuffle for the unordered activities")
 	sort(activities_list)
@@ -399,7 +466,7 @@ if args.done:
 			act["Time_done"] = act["Time_planned"]
 			text_to_logfile = act["Event"] + " done at \n" + convTimeToStr(getTime()) + "\n"
 			writeToLog(text_to_logfile)
-			writeToJSON(activities_list, "today.json")
+			writeToJSON(activities_list, "today.json") 
 
 if args.time:	
 	found = False
@@ -410,7 +477,7 @@ if args.time:
 			act["Time_done"] = int(args.time[1]) + int(act["Time_done"])
 			text_to_logfile = args.time[1] + " minutes spent on " + act["Event"] + " at \n" + convTimeToStr(getTime()) + "\n"
 			writeToLog(text_to_logfile)
-			writeToJSON(activities_list, "today.json")
+			writeToJSON(activities_list, "today.json") 
 	if found == False:
 		add_answer = input("Activitity " + args.time[0] + " was not found. Add it for today (Y/n)?") or "Y"
 		if add_answer.upper() == "Y":

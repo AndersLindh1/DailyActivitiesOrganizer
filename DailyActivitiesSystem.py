@@ -188,6 +188,7 @@ def getOldTime(reload, old_act, old_list):
 		if act["Event"] == old_act:
 			#print("act[\"Time_done\"]", act["Time_done"])
 			return int(act["Time_done"])
+	return 0 # default for events not found in list
 
 def getActivities(days,file_name, reload, old_list):
 	checkBlockExists()
@@ -299,7 +300,7 @@ def fixWeekdays(act, error_mode):
 	if result.upper() == "Y":
 		day_counter = 1
 		res_weekday = []
-		for day in ["monday", "tuesday", "wednesday", "thursdag", "friday", "saturday", "sunday"]:
+		for day in ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]:
 			res = input("Do you want " + act["Event"] + " scheduled for " + day + " (Y/n)? ") or "Y"
 			if res.upper() == "Y":
 				res_weekday.append(day_counter)

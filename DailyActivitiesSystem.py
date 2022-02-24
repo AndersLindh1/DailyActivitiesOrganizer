@@ -232,7 +232,8 @@ def getActivities(days,file_name, reload, old_list):
 					#print("Debug file_name",file_name,"Weekdays != 0, ")
 					act["Time_done"] = getOldTime(reload, act["Event"], old_list)
 					act_list2.append(act)
-		writeToJSON(activities_list, 'block.json') 
+		if reload == False:
+			writeToJSON(activities_list, 'block.json') 
 		#print("Debug act_list2", act_list2)
 		return act_list2
 	return activities_list

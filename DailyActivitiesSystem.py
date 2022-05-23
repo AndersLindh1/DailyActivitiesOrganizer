@@ -1,6 +1,8 @@
 #! /usr/bin/env python3
 # Anders Lindh
 # 2022-01-11
+# python script to help execute recurring tasks
+# See https://github.com/AndersLindh1/DailyActivitiesOrganizer
 
 import argparse
 import random
@@ -15,6 +17,18 @@ path = os.getcwd()
 
 def getFullPath(file_name):
 	return os.path.join(os.path.expanduser('~/.config/DailyActivitiesSystem'),file_name)
+
+def removeToday():
+	writeToDebug("removeToday()")
+	file_name = getFullPath("today.json")	
+	res = False
+	print(file_name)	
+	if os.path.exists(file_name):
+		os.remove(file_name)
+		res = True
+	print("Return:")
+	print(res)
+	return res
 
 def checkPath(file_path):
 	check_path = os.path.dirname(file_path)
@@ -139,6 +153,13 @@ def addActivity(activity, order, time, per, weekd):
 	checkOrder(activities_list)
 	return True
 
+def writeToDebug(text):
+	file_path = getFullPath("debug.txt")
+	with open(file_path, 'a') as file: 
+		file.write(convTimeToStr(getTime())+"\n")
+		file.write(text+"\n")
+	return 
+
 def writeToLog(text):
 	file_path = getFullPath("log.txt")
 	with open(file_path, 'a') as file: 
@@ -179,10 +200,10 @@ def checkTodayExists():
 		writeToJSON(activities_list, "block.json")   
 		writeToJSON(activities_list, "today.json")   
 
-def getOldTime(reload, old_act, old_list):
+def getOldTime(old_act, old_list):
 	#print("Debug getOldTime: reload", reload, "old_act", old_act)
-	if not reload:
-		return 0
+	#if not reload:
+		#return 0
 	for act in old_list:
 		#print("act[\"Event\"]", act["Event"])
 		if act["Event"] == old_act:
@@ -190,53 +211,74 @@ def getOldTime(reload, old_act, old_list):
 			return int(act["Time_done"])
 	return 0 # default for events not found in list
 
-def getActivities(days,file_name, reload, old_list):
-	checkBlockExists()
-	checkTodayExists()
-	file_path = getFullPath(file_name)
-	with open(file_path, 'r') as file:
-		activities_list = json.loads(file.read())
-			#print(activities_list)
+def changeToInt(activities_list, days):
 	for act in activities_list:
 		act["Time_planned"] = int(act["Time_planned"])
 		act["Time_done"] = int(act["Time_done"])
 		act["Order"] = int(act["Order"])
 		act["Periodicity"] = int(act["Periodicity"])
 		act["Day_counter"] = int(act["Day_counter"])+days
+	return activities_list
+
+def getBlockAct():
+	checkBlockExists()
+	file_path = getFullPath("block.json")
+	with open(file_path, 'r') as file:
+		activities_list = json.loads(file.read())
+			#print(activities_list)
+	activities_list = changeToInt(activities_list, days)
+	return activities_list
+
+def getActivities(days,file_name, reload, old_list):
+	### get activities from file_name and return those that apply for today (either fixed weekdays or periodicity meet or exceeded) ###
+	print("getActivities")
+	print("days",days,"file_name", file_name, "reload", reload, "old_list", old_list)
+	checkBlockExists()
+	checkTodayExists()
+	file_path = getFullPath(file_name)
+	with open(file_path, 'r') as file:
+		activities_list = json.loads(file.read())
+			#print(activities_list)
+	activities_list = changeToInt(activities_list, days)
 	
+	print("debug before reload or days check", activities_list)
 	act_list2=[]
 	#print("Debug 1! file_name", file_name, "reload:", reload, "days:", days)
-	if reload == True or days > 0:
+	#if reload == True or days > 0:
 		#print("Debug 2! file_name", file_name, "reload:", reload, "days:", days)
-		if days > 0:
-			text = "New day\n" + convTimeToStr(getTime()) + "\n"
-			writeToLog(text)
-		for act in activities_list:
-			if act["Weekdays"] == 0:
-				#print("Debug: act =", act, "Weekdays =", act["Weekdays"])
-				if reload == True:
-					correction = 1
-				else:
-					correction = 0
-				if act["Day_counter"] + correction >= act["Periodicity"]:
+	if days > 0:
+		text = "New day\n" + convTimeToStr(getTime()) + "\n"
+		writeToLog(text)
+	for act in activities_list:
+		print("debug inside for act in activities_list (act[\"Event\"] =",act["Event"]) #, activities_list)
+		if act["Weekdays"] == 0:
+			print("Debug: act =", act, "Weekdays =", act["Weekdays"])
+			#if reload == True:
+				#correction = 1
+			#else:
+				#correction = 0
+			if (act["Day_counter"] >= act["Periodicity"]) or (days == 0 and act["Day_counter"] == 0):
 					#print("Debug: reload", reload,"file_name", file_name, "act[\"Event\"]", act["Event"], "old_list", old_list)
 					#print("Debug file_name",file_name,"Weekdays == 0, ")
-					act["Time_done"] = getOldTime(reload, act["Event"], old_list)
-					act["Day_counter"] = 0
-					act_list2.append(act)
-			else:
-				weekday = getTime().isoweekday()
-				#print("Debug: act =", act, "isoweekday =", weekday)
+				act["Time_done"] = getOldTime(act["Event"], old_list)
+				act["Day_counter"] = 0
+				act_list2.append(act)
+		else:
+			weekday = getTime().isoweekday()
+			print("Debug: act =", act, "isoweekday =", weekday)
 				##print("weekday", weekday, "act[\"Event\"]", act["Event"], "act[\"Weekdays\"]", act["Weekdays"])	#debug
-				if weekday in act["Weekdays"]:
+			if weekday in act["Weekdays"]:
 					#print("Debug file_name",file_name,"Weekdays != 0, ")
-					act["Time_done"] = getOldTime(reload, act["Event"], old_list)
-					act_list2.append(act)
-		if reload == False:
-			writeToJSON(activities_list, 'block.json') 
-		#print("Debug act_list2", act_list2)
-		return act_list2
-	return activities_list
+				act["Time_done"] = getOldTime(act["Event"], old_list)    ### 2022-04-18: Problem with Time_done (is set to 0 even if time was done before!!!)
+				act_list2.append(act)
+	#	if reload == False and file_name == "block.json":
+	#		print("reload == False, days =", days)
+	#		print(activities_list)
+	#		print("write to block.json")
+	#		writeToJSON(activities_list, 'block.json') 
+	print("Debug act_list2", act_list2)
+	return act_list2
+#	return activities_list
 
 def sort(activities_list):
 	if checkOrder(activities_list) == True: #check if every "Order" is unique except for 0, which is a flag for random order
@@ -366,13 +408,19 @@ def printOrder():  ##use max instead?
 			order += 1
 	return order+1
 
+writeToDebug("start of execution")
 days = checkNewDay()
 if days != 0:
-	if os.path.exists('today.json'):
-		os.remove('today.json')
+	removeToday()
+		
 activities_list = getActivities(days,"today.json", False, [])	#at start of script, if new day reset Time_done and increase Day_counter
+
+print("debug before sort", activities_list)
 sort(activities_list)	#at start of day or if requested with -
+print("debug before write to today.json", activities_list)
 writeToJSON(activities_list, "today.json")
+
+print("debug after write to today.json", activities_list)
 parser = argparse.ArgumentParser(description='Support system to execute daily activities')
 parser.add_argument("-l", "--list", action='store_true', help='List remaining activities for today')
 parser.add_argument('-t', '--today', action='store_true', help='Show all activities for today')
@@ -387,9 +435,12 @@ parser.add_argument('-r', '--crontab', action='store_true', help='Send email wit
 
 #parser.print_help()  # debug                  
 args = parser.parse_args()
+writeToDebug(str(args))
 if args.block:
 	checkBlockExists()
-	activities_list = getActivities(0,"block.json", False, [])
+	#activities_list = getActivities(0,"block.json", False, [])
+	block_list = getBlockAct()
+	print(block_list)
 	menu = 1
 	while menu != 0:
 		#clear screen?
@@ -407,32 +458,32 @@ if args.block:
 			time_add, order_add = getMinutesOrder()
 			if addActivity(new_act, order_add, time_add, 1, 0) == True:
 				#print("Debug: addActivity, activities_list", activities_list)
-				for act in activities_list:
+				for act in block_list:
 					if act["Event"] == new_act:
 						#print("Debug new_act", new_act)
 						break
 				fixWeekdays(act, False)
 				#print("Debug2: activities_list", activities_list)
-				writeToJSON(activities_list, "block.json") 
+				writeToJSON(block_list, "block.json") 
 		if menu == 2:
 			remove = False
 			print("Remove activity")
-			for act in activities_list:
+			for act in block_list:
 				res = input("Remove " + act["Event"] + "? (y/N) ") or "N"
 				if res.lower() == "y":
-					activities_list.remove(act)
+					block_list.remove(act)
 			#		print(activities_list)
 					remove = True
 			if remove == True:
-				writeToJSON(activities_list, "block.json") 
+				writeToJSON(block_list, "block.json") 
 
 		if menu == 3:
 			print("Change order")
 			fixOrder()
-			writeToJSON(activities_list, "block.json") 
+			writeToJSON(block_list, "block.json") 
 		if menu == 4:
 			print("change periodicity or weekday")
-			for act in activities_list:
+			for act in block_list:
 				text = "Change " + act["Event"] + " with current settings: "
 				if act["Weekdays"] == 0:
 					text = text + "periodicity " + str(act["Periodicity"])
@@ -441,15 +492,16 @@ if args.block:
 				res = input(text + " (y/N) ") or "N"
 				if res.upper() == "Y":
 					fixWeekdays(act, False)		
-			writeToJSON(activities_list, "block.json") 
+			writeToJSON(block_list, "block.json") 
 		if menu == 5:
 			print("change planned time")
-			for act in activities_list:
+			for act in block_list:
 				res = input("Enter new planned time for " + act["Event"] + " or press enter to keep current time (" + str(act["Time_planned"]) + ")") or act["Time_planned"]
 				act["Time_planned"] = int(res)
-			writeToJSON(activities_list, "block.json") 
-		old_activities_list = getActivities(0,"today.json", False, [])
-		new_activities_list = getActivities(days, "block.json", True, old_activities_list)
+			writeToJSON(block_list, "block.json") 
+		#old_activities_list = getActivities(0,"today.json", False, [])
+		removeToday()
+		new_activities_list = getActivities(days, "block.json", True, activities_list)
 		#print("debug: write reloaded activities list to today.json")
 		#print(new_activities_list, activities_list)
 		writeToJSON(new_activities_list, "today.json")
@@ -520,6 +572,7 @@ if args.time:
 			act["Time_done"] = int(args.time[1]) + int(act["Time_done"])
 			text_to_logfile = args.time[1] + " minutes spent on " + act["Event"] + " at \n" + convTimeToStr(getTime()) + "\n"
 			writeToLog(text_to_logfile)
+			print("debug inside args.time before write to today.json",activities_list)
 			writeToJSON(activities_list, "today.json") 
 	if found == False:
 		add_answer = input("Activitity " + args.time[0] + " was not found. Add it for today (Y/n)?") or "Y"
